@@ -1,2 +1,5 @@
 print('Hello World!')
-x = 2 + 2
+
+import streamlit as st
+
+st.write("Ca fonctionne")
