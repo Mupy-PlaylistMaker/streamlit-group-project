@@ -10,8 +10,8 @@ SCOPE = "user-read-private user-read-email"
 
 sp_oauth = SpotifyOAuth(client_id=CLIENT_ID,
                         client_secret=CLIENT_SECRET,
-                        redirect_uri=REDIRECT_URI,
-                        scope=SCOPE)
+                        redirect_uri="http://localhost:8888/callback",
+                        scope="user-library-read")
 
 auth_url = sp_oauth.get_authorize_url()
 query_params = st.query_params
