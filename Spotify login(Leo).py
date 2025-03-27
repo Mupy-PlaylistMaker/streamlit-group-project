@@ -142,11 +142,7 @@ if "token_info" not in st.session_state:
     st.markdown('<div class="logo-text">MUPY</div>', unsafe_allow_html=True)
     st.markdown('<div class="cta-text">Login with Spotify to start your journey</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="center-box"><a class="login-btn" href="{auth_url}">Log in with Spotify</a></div>', unsafe_allow_html=True)
-if st.button("Logout"):
-            # Clear the token from session_state
-            st.session_state.pop("access_token", None)
-            st.success("You have been logged out.")
-            st.experimental_rerun()  # Refresh so the app re-checks login state
+
 # --- UI AFTER login
 if "token_info" in st.session_state:
     try:
@@ -168,6 +164,12 @@ if "token_info" in st.session_state:
         st.markdown(f"**Name:** {user.get('display_name', 'Unknown')}")
         st.markdown(f"**Email:** {user.get('email', 'Not available')}")
         st.markdown(f"**Country:** {user.get('country', 'Not available')}")
+
+    if st.button("Logout"):
+            # Clear the token from session_state
+            st.session_state.pop("access_token", None)
+            st.success("You have been logged out.")
+            st.experimental_rerun()  # Refresh so the app re-checks login state
 
     except Exception as e:
         st.error("Something went wrong while loading your profile.")
