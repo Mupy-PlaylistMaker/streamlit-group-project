@@ -9,10 +9,14 @@ REDIRECT_URI = "https://spotify20appleopy-wr6jzbaagwn9sxdzmtmjwl.streamlit.app/"
 SCOPE = "user-read-private user-read-email"
 
 # --- OAuth Setup ---
-sp_oauth = SpotifyOAuth(client_id=CLIENT_ID,
-                        client_secret=CLIENT_SECRET,
-                        redirect_uri=REDIRECT_URI,
-                        scope=SCOPE)
+sp_oauth = SpotifyOAuth(
+    client_id=CLIENT_ID,
+    client_secret=CLIENT_SECRET,
+    redirect_uri=REDIRECT_URI,
+    scope=SCOPE,
+    cache_path=".cache-mupy"
+)
+
 
 # --- Streamlit Config ---
 st.set_page_config(page_title="MUPY", layout="centered", page_icon="🎧")
