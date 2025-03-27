@@ -6,7 +6,7 @@ from spotipy.oauth2 import SpotifyOAuth
 # Spotify credentials
 CLIENT_ID = "61465f148fcb406b856636263e273525"
 CLIENT_SECRET = "d96d3207f4da4bc1a7f302685f6f8099"
-REDIRECT_URI = " "
+REDIRECT_URI = " http://localhost:8501/ "
 SCOPE = "user-read-private user-read-email playlist-modify-private user-library-read user-top-read" # List of interactions with Spotify account authorized for Mupy
 
 # OAuth setup (how the app will have access to the spotify account)
