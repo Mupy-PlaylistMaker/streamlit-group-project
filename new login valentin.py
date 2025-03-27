@@ -99,10 +99,10 @@ st.markdown("""
     .profile-pic {
         position: fixed;
         top: 20px;
-        left: 20px;
+        left: 50px;
         border-radius: 50%;
         width: 60px;
-        height: 60px;
+        height: 150px;
         border: 2px solid #b388eb;
         object-fit: cover;
         z-index: 999;
