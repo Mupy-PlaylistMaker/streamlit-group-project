@@ -142,6 +142,8 @@ if "token_info" in st.session_state:
                                   format_func=lambda x: {"short_term": "Last 4 Weeks", "medium_term": "Last 6 Months", "long_term": "All Time"}[x])
         track_limit = st.slider("How many top tracks to show?", 5, 50, 20)
 
+        popularity_filter = st.selectbox("🎯 Filter by Popularity", ["All", "🔥 Very Popular (81–100)", "👍 Popular (61–80)", "🙂 Moderate (41–60)", "😐 Low Popularity (0–40)"])
+
         raw_tracks = sp.current_user_top_tracks(limit=track_limit, time_range=time_range)['items']
 
         all_genres = set()
@@ -165,44 +167,35 @@ if "token_info" in st.session_state:
         st.caption(f"🔍 {len(enriched_tracks)} tracks matched your selected genres.")
 
         if not enriched_tracks:
-            st.warning("No tracks match your selected genres.")
+            st.warning("No tracks match your selected filters.")
         else:
-            popularity_groups = {
-                "🔥 Very Popular (81–100)": [],
-                "👍 Popular (61–80)": [],
-                "🙂 Moderate (41–60)": [],
-                "😐 Low Popularity (0–40)": []
-            }
-
-            for entry in enriched_tracks:
-                pop = entry['track']['popularity']
-                if pop >= 81:
-                    popularity_groups["🔥 Very Popular (81–100)"].append(entry)
-                elif pop >= 61:
-                    popularity_groups["👍 Popular (61–80)"].append(entry)
-                elif pop >= 41:
-                    popularity_groups["🙂 Moderate (41–60)"].append(entry)
-                else:
-                    popularity_groups["😐 Low Popularity (0–40)"].append(entry)
-
             track_uris = []
 
-            for group_title, entries in popularity_groups.items():
-                if entries:
-                    st.subheader(group_title)
-                    for entry in entries:
-                        track = entry["track"]
-                        st.markdown(f"### {track['name']} by {', '.join([a['name'] for a in track['artists']])}")
-                        if track['album']['images']:
-                            st.image(track['album']['images'][0]['url'], width=150)
-                        if track['preview_url']:
-                            st.audio(track['preview_url'], format="audio/mp3")
-                        else:
-                            st.caption("⚠️ No preview available.")
-                        st.markdown(f"**Genres:** {', '.join(entry['genres'])}")
-                        st.markdown(f"[▶️ Listen on Spotify]({track['external_urls']['spotify']})")
-                        st.markdown("---")
-                        track_uris.append(track['uri'])
+            for entry in enriched_tracks:
+                track = entry["track"]
+                pop = track['popularity']
+
+                # Popularity filter condition
+                if popularity_filter == "🔥 Very Popular (81–100)" and pop < 81:
+                    continue
+                elif popularity_filter == "👍 Popular (61–80)" and not (61 <= pop <= 80):
+                    continue
+                elif popularity_filter == "🙂 Moderate (41–60)" and not (41 <= pop <= 60):
+                    continue
+                elif popularity_filter == "😐 Low Popularity (0–40)" and pop > 40:
+                    continue
+
+                st.markdown(f"### {track['name']} by {', '.join([a['name'] for a in track['artists']])}")
+                if track['album']['images']:
+                    st.image(track['album']['images'][0]['url'], width=150)
+                if track['preview_url']:
+                    st.audio(track['preview_url'], format="audio/mp3")
+                else:
+                    st.caption("⚠️ No preview available.")
+                st.markdown(f"**Genres:** {', '.join(entry['genres'])}")
+                st.markdown(f"[▶️ Listen on Spotify]({track['external_urls']['spotify']})")
+                st.markdown("---")
+                track_uris.append(track['uri'])
 
             st.subheader("📤 Export to Playlist")
             user_playlists = sp.current_user_playlists(limit=50)['items']
