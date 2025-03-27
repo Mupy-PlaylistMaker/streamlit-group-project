@@ -151,6 +151,30 @@ if "token_info" not in st.session_state:
     st.markdown('<div class="cta-text">Login with Spotify to start your journey</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="center-box"><a class="login-btn" href="{auth_url}">Log in with Spotify</a></div>', unsafe_allow_html=True)
 
+# --- UI AFTER login -> UI design after being login with spotify account
+if "token_info" in st.session_state:
+    try:
+        sp = spotipy.Spotify(auth=st.session_state['token_info']['access_token'])
+        user = sp.current_user()
+
+        # ✅ Success box
+        st.markdown("<div class='success-box'>✅ Logged in successfully!</div>", unsafe_allow_html=True)
+
+        # ✅ Profile pic top-left
+        if user.get('images') and user['images']:
+            st.markdown(
+                f"<img class='profile-pic' src='{user['images'][0]['url']}' />",
+                unsafe_allow_html=True
+            ) 
+        # ✅ User info display
+        st.subheader("Welcome 🎧")
+        st.markdown(f"**Name:** {user.get('display_name', 'Unknown')}")
+        st.markdown(f"**Email:** {user.get('email', 'Not available')}")
+        st.markdown(f"**Country:** {user.get('country', 'Not available')}")
+
+    except Exception as e:
+        st.error("Something went wrong while loading your profile.")
+        st.exception(e)
 
 
 
