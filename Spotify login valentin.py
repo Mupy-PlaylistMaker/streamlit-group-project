@@ -119,7 +119,7 @@ st.markdown("""
 auth_url = sp_oauth.get_authorize_url()
 
 # --- Read query params safely
-query_params = st.experimental_get_query_params()
+query_params = st.query_params()
 
 # --- Handle Spotify redirect
 if "code" in query_params:
