@@ -158,18 +158,18 @@ if "token_info" in st.session_state:
                 f"<img class='profile-pic' src='{user['images'][0]['url']}' />",
                 unsafe_allow_html=True
             )
-
+     if st.button("Logout"):
+            # Clear the token from session_state
+            st.session_state.pop("access_token", None)
+            st.success("You have been logged out.")
+            st.experimental_rerun()  # Refresh so the app re-checks login state
         # ✅ User info display
         st.subheader("Welcome 🎧")
         st.markdown(f"**Name:** {user.get('display_name', 'Unknown')}")
         st.markdown(f"**Email:** {user.get('email', 'Not available')}")
         st.markdown(f"**Country:** {user.get('country', 'Not available')}")
 
-    if st.button("Logout"):
-            # Clear the token from session_state
-            st.session_state.pop("access_token", None)
-            st.success("You have been logged out.")
-            st.experimental_rerun()  # Refresh so the app re-checks login state
+   
 
     except Exception as e:
         st.error("Something went wrong while loading your profile.")
