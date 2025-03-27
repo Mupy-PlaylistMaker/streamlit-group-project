@@ -157,8 +157,7 @@ if "token_info" in st.session_state:
             st.markdown(
                 f"<img class='profile-pic' src='{user['images'][0]['url']}' />",
                 unsafe_allow_html=True
-            )
-         
+            ) 
         # ✅ User info display
         st.subheader("Welcome 🎧")
         st.markdown(f"**Name:** {user.get('display_name', 'Unknown')}")
