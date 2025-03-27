@@ -98,11 +98,11 @@ st.markdown("""
 
     .profile-pic {
         position: fixed;
-        top: 20px;
-        left: 50px;
+        top: 80px;
+        left: 80px;
         border-radius: 50%;
         width: 60px;
-        height: 150px;
+        height: 60px;
         border: 2px solid #b388eb;
         object-fit: cover;
         z-index: 999;
