@@ -5,7 +5,7 @@ from spotipy.oauth2 import SpotifyOAuth
 # --- Spotify Credentials ---
 CLIENT_ID = "61465f148fcb406b856636263e273525"
 CLIENT_SECRET = "d96d3207f4da4bc1a7f302685f6f8099"
-REDIRECT_URI = "mupyplaylistmaker.streamlit.app/callback"
+REDIRECT_URI = "https://leo20v1py-gfunqxuswkgsw5encuqc5s.streamlit.app/callback"
 SCOPE = "user-read-private user-read-email"
 
 # --- OAuth Setup ---
