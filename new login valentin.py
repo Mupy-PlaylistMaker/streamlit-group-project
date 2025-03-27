@@ -14,7 +14,7 @@ sp_oauth = SpotifyOAuth(client_id=CLIENT_ID,
                         scope=SCOPE)
 
 auth_url = sp_oauth.get_authorize_url()
-query_params = st.experimental_get_query_params()
+query_params = st.query_params
 
 # --- Page Setup ---
 st.set_page_config(page_title="MUPY", layout="centered", page_icon="🎧")
