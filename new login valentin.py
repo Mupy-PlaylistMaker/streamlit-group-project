@@ -5,7 +5,7 @@ from spotipy.oauth2 import SpotifyOAuth
 # --- Spotify Credentials ---
 CLIENT_ID = "dcfd782b75b4472c9712492560b7a142"
 CLIENT_SECRET = "01a88c106a204ca1a4f819e0f73d0ffa"
-REDIRECT_URI = "http://localhost:8501"
+REDIRECT_URI = "https://spotify20appleopy-wr6jzbaagwn9sxdzmtmjwl.streamlit.app/"
 SCOPE = "user-read-private user-read-email"
 
 sp_oauth = SpotifyOAuth(client_id=CLIENT_ID,
@@ -14,7 +14,7 @@ sp_oauth = SpotifyOAuth(client_id=CLIENT_ID,
                         scope=SCOPE)
 
 auth_url = sp_oauth.get_authorize_url()
-query_params = st.query_params
+query_params = st.experimental_get_query_params()
 
 # --- Page Setup ---
 st.set_page_config(page_title="MUPY", layout="centered", page_icon="🎧")
