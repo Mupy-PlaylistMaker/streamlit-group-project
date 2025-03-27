@@ -3,7 +3,6 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import datetime
 
-# --- Spotify App Credentials ---
 CLIENT_ID = "dcfd782b75b4472c9712492560b7a142"
 CLIENT_SECRET = "01a88c106a204ca1a4f819e0f73d0ffa"
 REDIRECT_URI = "http://localhost:8501"
@@ -17,88 +16,87 @@ sp_oauth = SpotifyOAuth(
     cache_path=".cache"
 )
 
-# --- Streamlit Page Setup ---
-st.set_page_config(page_title="MUPY", layout="centered", page_icon="🎧")
+st.set_page_config(page_title="MUPY", layout="centered", page_icon="🎷")
 
 # --- CSS Styling ---
 st.markdown("""
-    <style>
-    html, body, .stApp {
-        background: linear-gradient(to bottom, #000000, #0b0011);
-        color: #eeeeee;
-        font-family: 'Outfit', sans-serif;
-    }
-    .logo-text {
-        font-size: 4em;
-        font-weight: 700;
-        background: linear-gradient(90deg, #ff4ecb, #b388eb);
-        background-size: 200% auto;
-        color: transparent;
-        background-clip: text;
-        -webkit-background-clip: text;
-        text-align: center;
-        margin-top: 60px;
-        margin-bottom: 20px;
-    }
-    .cta-text {
-        font-size: 1.5em;
-        text-align: center;
-        margin-bottom: 50px;
-        color: #cccccc;
-    }
-    .login-btn {
-        display: inline-block;
-        background-color: #1db954;
-        color: white !important;
-        padding: 0.9em 2.2em;
-        border-radius: 30px;
-        font-weight: 600;
-        font-size: 1.1em;
-        text-decoration: none;
-        transition: all 0.3s ease-in-out;
-        box-shadow: 0 0 10px #1db95466;
-    }
-    .login-btn:hover {
-        background-color: #1ed760;
-        transform: scale(1.05);
-        box-shadow: 0 0 14px #1ed760aa;
-    }
-    .center-box {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-    }
-    .success-box {
-        background-color: #1a1f1b;
-        border-left: 5px solid #1db954;
-        padding: 1em;
-        margin-top: 60px;
-        margin-bottom: 60px;
-        border-radius: 10px;
-        font-weight: 500;
-        color: #d4fcdc;
-        text-align: center;
-        width: 80%;
-        margin-left: auto;
-        margin-right: auto;
-    }
-    .profile-pic {
-        position: fixed;
-        top: 20px;
-        left: 50px;
-        border-radius: 50%;
-        width: 60px;
-        height: 60px;
-        border: 2px solid #b388eb;
-        object-fit: cover;
-        z-index: 999;
-        box-shadow: 0 0 10px #b388eb88;
-    }
-    </style>
+<style>
+html, body, .stApp {
+    background: linear-gradient(to bottom, #000000, #0b0011);
+    color: #eeeeee;
+    font-family: 'Outfit', sans-serif;
+}
+.logo-text {
+    font-size: 4em;
+    font-weight: 700;
+    background: linear-gradient(90deg, #ff4ecb, #b388eb);
+    background-size: 200% auto;
+    color: transparent;
+    background-clip: text;
+    -webkit-background-clip: text;
+    text-align: center;
+    margin-top: 60px;
+    margin-bottom: 20px;
+}
+.cta-text {
+    font-size: 1.5em;
+    text-align: center;
+    margin-bottom: 50px;
+    color: #cccccc;
+}
+.login-btn {
+    display: inline-block;
+    background-color: #1db954;
+    color: white !important;
+    padding: 0.9em 2.2em;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 1.1em;
+    text-decoration: none;
+    transition: all 0.3s ease-in-out;
+    box-shadow: 0 0 10px #1db95466;
+}
+.login-btn:hover {
+    background-color: #1ed760;
+    transform: scale(1.05);
+    box-shadow: 0 0 14px #1ed760aa;
+}
+.center-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.success-box {
+    background-color: #1a1f1b;
+    border-left: 5px solid #1db954;
+    padding: 1em;
+    margin-top: 60px;
+    margin-bottom: 60px;
+    border-radius: 10px;
+    font-weight: 500;
+    color: #d4fcdc;
+    text-align: center;
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+}
+.profile-pic {
+    position: fixed;
+    top: 20px;
+    left: 50px;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    border: 2px solid #b388eb;
+    object-fit: cover;
+    z-index: 999;
+    box-shadow: 0 0 10px #b388eb88;
+}
+</style>
 """, unsafe_allow_html=True)
 
-# --- Redirect Handling ---
+# --- Handle Redirect ---
 auth_url = sp_oauth.get_authorize_url()
 if "code" in st.query_params:
     code = st.query_params["code"]
@@ -111,7 +109,7 @@ if "code" in st.query_params:
         st.error("Login failed.")
         st.exception(e)
 
-# --- Function to Get Artist Genres ---
+# --- Get Artist Genres ---
 def get_artist_genres(sp, artist_id):
     try:
         artist = sp.artist(artist_id)
@@ -119,7 +117,7 @@ def get_artist_genres(sp, artist_id):
     except Exception:
         return []
 
-# --- Main Application ---
+# --- Main App ---
 if "token_info" in st.session_state:
     try:
         sp = spotipy.Spotify(auth=st.session_state['token_info']['access_token'])
@@ -137,7 +135,6 @@ if "token_info" in st.session_state:
         st.markdown(f"**Email:** {user.get('email')}")
         st.markdown(f"**Country:** {user.get('country')}")
 
-        # --- Filters ---
         st.markdown("---")
         st.subheader("🎶 Your Top Tracks")
 
@@ -147,7 +144,6 @@ if "token_info" in st.session_state:
 
         raw_tracks = sp.current_user_top_tracks(limit=track_limit, time_range=time_range)['items']
 
-        # Fetch genres
         all_genres = set()
         enriched_tracks = []
 
@@ -158,7 +154,7 @@ if "token_info" in st.session_state:
                 all_genres.update(genres)
                 enriched_tracks.append({"track": track, "genres": genres})
 
-        selected_genres = st.multiselect("🎧 Filter by Artist Genre", sorted(all_genres))
+        selected_genres = st.multiselect("🎷 Filter by Artist Genre", sorted(all_genres))
 
         if selected_genres:
             enriched_tracks = [
@@ -166,27 +162,48 @@ if "token_info" in st.session_state:
                 if any(genre in selected_genres for genre in entry['genres'])
             ]
 
-        st.caption(f"🔍 {len(enriched_tracks)} tracks matched your genre filters.")
+        st.caption(f"🔍 {len(enriched_tracks)} tracks matched your selected genres.")
 
         if not enriched_tracks:
             st.warning("No tracks match your selected genres.")
         else:
-            track_uris = []
-            for entry in enriched_tracks:
-                track = entry["track"]
-                st.markdown(f"### {track['name']} by {', '.join([a['name'] for a in track['artists']])}")
-                if track['album']['images']:
-                    st.image(track['album']['images'][0]['url'], width=150)
-                if track['preview_url']:
-                    st.audio(track['preview_url'], format="audio/mp3")
-                else:
-                    st.caption("⚠️ No preview available.")
-                st.markdown(f"**Genres:** {', '.join(entry['genres'])}")
-                st.markdown(f"[▶️ Listen on Spotify]({track['external_urls']['spotify']})")
-                st.markdown("---")
-                track_uris.append(track['uri'])
+            popularity_groups = {
+                "🔥 Very Popular (81–100)": [],
+                "👍 Popular (61–80)": [],
+                "🙂 Moderate (41–60)": [],
+                "😐 Low Popularity (0–40)": []
+            }
 
-            # --- Playlist Export ---
+            for entry in enriched_tracks:
+                pop = entry['track']['popularity']
+                if pop >= 81:
+                    popularity_groups["🔥 Very Popular (81–100)"].append(entry)
+                elif pop >= 61:
+                    popularity_groups["👍 Popular (61–80)"].append(entry)
+                elif pop >= 41:
+                    popularity_groups["🙂 Moderate (41–60)"].append(entry)
+                else:
+                    popularity_groups["😐 Low Popularity (0–40)"].append(entry)
+
+            track_uris = []
+
+            for group_title, entries in popularity_groups.items():
+                if entries:
+                    st.subheader(group_title)
+                    for entry in entries:
+                        track = entry["track"]
+                        st.markdown(f"### {track['name']} by {', '.join([a['name'] for a in track['artists']])}")
+                        if track['album']['images']:
+                            st.image(track['album']['images'][0]['url'], width=150)
+                        if track['preview_url']:
+                            st.audio(track['preview_url'], format="audio/mp3")
+                        else:
+                            st.caption("⚠️ No preview available.")
+                        st.markdown(f"**Genres:** {', '.join(entry['genres'])}")
+                        st.markdown(f"[▶️ Listen on Spotify]({track['external_urls']['spotify']})")
+                        st.markdown("---")
+                        track_uris.append(track['uri'])
+
             st.subheader("📤 Export to Playlist")
             user_playlists = sp.current_user_playlists(limit=50)['items']
             playlist_names = [p['name'] for p in user_playlists]
@@ -206,7 +223,7 @@ if "token_info" in st.session_state:
 
             elif export_option == "Create New Playlist":
                 new_name = st.text_input("Name for new playlist:")
-                if st.button("📀 Create Playlist and Add Tracks") and new_name:
+                if st.button("💼 Create Playlist and Add Tracks") and new_name:
                     try:
                         new_playlist = sp.user_playlist_create(user=user['id'], name=new_name, public=True)
                         sp.playlist_add_items(new_playlist['id'], track_uris)
