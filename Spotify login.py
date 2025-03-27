@@ -27,7 +27,7 @@ def main():
             st.markdown(f"[**Authorize on Spotify**]({auth_url})")
         
         # If user is coming back from Spotify with the ?code= param
-        query_params = st.experimental_get_query_params()
+        query_params = st.query_params
         if "code" in query_params:
             code = query_params["code"][0]
             token_info = sp_oauth.get_access_token(code)
