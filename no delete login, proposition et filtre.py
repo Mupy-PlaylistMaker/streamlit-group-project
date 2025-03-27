@@ -1,7 +1,6 @@
 import streamlit as st
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
-import datetime
 
 CLIENT_ID = "dcfd782b75b4472c9712492560b7a142"
 CLIENT_SECRET = "01a88c106a204ca1a4f819e0f73d0ffa"
@@ -96,7 +95,7 @@ html, body, .stApp {
 </style>
 """, unsafe_allow_html=True)
 
-# --- Handle Redirect ---
+# --- Redirect Handling ---
 auth_url = sp_oauth.get_authorize_url()
 if "code" in st.query_params:
     code = st.query_params["code"]
@@ -109,7 +108,7 @@ if "code" in st.query_params:
         st.error("Login failed.")
         st.exception(e)
 
-# --- Get Artist Genres ---
+# --- Helpers ---
 def get_artist_genres(sp, artist_id):
     try:
         artist = sp.artist(artist_id)
@@ -119,115 +118,103 @@ def get_artist_genres(sp, artist_id):
 
 # --- Main App ---
 if "token_info" in st.session_state:
-    try:
-        sp = spotipy.Spotify(auth=st.session_state['token_info']['access_token'])
-        user = sp.current_user()
+    sp = spotipy.Spotify(auth=st.session_state['token_info']['access_token'])
+    user = sp.current_user()
 
-        if user.get("images"):
-            st.markdown(f"<img class='profile-pic' src='{user['images'][0]['url']}' />", unsafe_allow_html=True)
+    if user.get("images"):
+        st.markdown(f"<img class='profile-pic' src='{user['images'][0]['url']}' />", unsafe_allow_html=True)
 
-        st.markdown('<div class="logo-text">MUPY</div>', unsafe_allow_html=True)
-        st.markdown('<div class="cta-text">Welcome to your Spotify-powered experience!</div>', unsafe_allow_html=True)
-        st.markdown("<div class='success-box'>✅ Logged in successfully!</div>", unsafe_allow_html=True)
+    st.markdown('<div class="logo-text">MUPY</div>', unsafe_allow_html=True)
+    st.markdown('<div class="cta-text">Welcome to your Spotify-powered experience!</div>', unsafe_allow_html=True)
+    st.markdown("<div class='success-box'>✅ Logged in successfully!</div>", unsafe_allow_html=True)
 
-        st.subheader("👤 Your Profile")
-        st.markdown(f"**Name:** {user.get('display_name')}")
-        st.markdown(f"**Email:** {user.get('email')}")
-        st.markdown(f"**Country:** {user.get('country')}")
+    st.subheader("👤 Your Profile")
+    st.markdown(f"**Name:** {user.get('display_name')}")
+    st.markdown(f"**Email:** {user.get('email')}")
+    st.markdown(f"**Country:** {user.get('country')}")
 
-        st.markdown("---")
-        st.subheader("🎶 Your Top Tracks")
+    st.markdown("---")
 
+    # Mode toggle
+    mode = st.radio("Choose Mode:", ["🎵 Top Tracks", "🌐 Explore Spotify"])
+
+    track_list = []
+    popularity_filter = st.selectbox("🎯 Filter by Popularity", ["All", "🔥 Very Popular (81–100)", "👍 Popular (61–80)", "🙂 Moderate (41–60)", "😐 Low Popularity (0–40)"])
+    show_previews_only = st.toggle("Show only tracks with preview", value=False)
+
+    if mode == "🎵 Top Tracks":
         time_range = st.selectbox("Choose time range", ["short_term", "medium_term", "long_term"],
                                   format_func=lambda x: {"short_term": "Last 4 Weeks", "medium_term": "Last 6 Months", "long_term": "All Time"}[x])
         track_limit = st.slider("How many top tracks to show?", 5, 50, 20)
-
-        popularity_filter = st.selectbox("🎯 Filter by Popularity", ["All", "🔥 Very Popular (81–100)", "👍 Popular (61–80)", "🙂 Moderate (41–60)", "😐 Low Popularity (0–40)"])
-
         raw_tracks = sp.current_user_top_tracks(limit=track_limit, time_range=time_range)['items']
+    else:
+        genre_seeds = sp.recommendation_genre_seeds()['genres']
+        selected_genre = st.selectbox("🎧 Choose a genre to explore:", genre_seeds)
+        popularity = st.slider("🎯 Minimum popularity", 0, 100, 50)
+        raw_tracks = sp.recommendations(seed_genres=[selected_genre], limit=50, target_popularity=popularity)['tracks']
 
-        all_genres = set()
-        enriched_tracks = []
+    enriched_tracks = []
+    track_uris = []
+    for track in raw_tracks:
+        artist_id = track['artists'][0]['id']
+        genres = get_artist_genres(sp, artist_id)
+        enriched_tracks.append({"track": track, "genres": genres})
 
-        for track in raw_tracks:
-            artist_id = track['artists'][0]['id']
-            genres = get_artist_genres(sp, artist_id)
-            if genres:
-                all_genres.update(genres)
-                enriched_tracks.append({"track": track, "genres": genres})
+    for entry in enriched_tracks:
+        track = entry['track']
+        pop = track['popularity']
+        if popularity_filter == "🔥 Very Popular (81–100)" and pop < 81:
+            continue
+        elif popularity_filter == "👍 Popular (61–80)" and not (61 <= pop <= 80):
+            continue
+        elif popularity_filter == "🙂 Moderate (41–60)" and not (41 <= pop <= 60):
+            continue
+        elif popularity_filter == "😐 Low Popularity (0–40)" and pop > 40:
+            continue
+        if show_previews_only and not track['preview_url']:
+            continue
 
-        selected_genres = st.multiselect("🎷 Filter by Artist Genre", sorted(all_genres))
-
-        if selected_genres:
-            enriched_tracks = [
-                entry for entry in enriched_tracks
-                if any(genre in selected_genres for genre in entry['genres'])
-            ]
-
-        st.caption(f"🔍 {len(enriched_tracks)} tracks matched your selected genres.")
-
-        if not enriched_tracks:
-            st.warning("No tracks match your selected filters.")
+        st.markdown(f"### {track['name']} by {', '.join([a['name'] for a in track['artists']])}")
+        if track['album']['images']:
+            st.image(track['album']['images'][0]['url'], width=150)
+        if track['preview_url']:
+            st.audio(track['preview_url'], format="audio/mp3")
         else:
-            track_uris = []
+            st.caption("⚠️ No preview available.")
+        st.markdown(f"**Genres:** {', '.join(entry['genres']) if entry['genres'] else 'Unknown'}")
+        st.markdown(f"[▶️ Listen on Spotify]({track['external_urls']['spotify']})")
+        st.markdown("---")
+        track_uris.append(track['uri'])
 
-            for entry in enriched_tracks:
-                track = entry["track"]
-                pop = track['popularity']
+    # --- Playlist Export ---
+    if track_uris:
+        st.subheader("📤 Export to Playlist")
+        user_playlists = sp.current_user_playlists(limit=50)['items']
+        playlist_names = [p['name'] for p in user_playlists]
+        playlist_map = {p['name']: p['id'] for p in user_playlists}
 
-                # Popularity filter condition
-                if popularity_filter == "🔥 Very Popular (81–100)" and pop < 81:
-                    continue
-                elif popularity_filter == "👍 Popular (61–80)" and not (61 <= pop <= 80):
-                    continue
-                elif popularity_filter == "🙂 Moderate (41–60)" and not (41 <= pop <= 60):
-                    continue
-                elif popularity_filter == "😐 Low Popularity (0–40)" and pop > 40:
-                    continue
+        export_option = st.radio("Choose an export option:", ["Use Existing Playlist", "Create New Playlist"])
 
-                st.markdown(f"### {track['name']} by {', '.join([a['name'] for a in track['artists']])}")
-                if track['album']['images']:
-                    st.image(track['album']['images'][0]['url'], width=150)
-                if track['preview_url']:
-                    st.audio(track['preview_url'], format="audio/mp3")
-                else:
-                    st.caption("⚠️ No preview available.")
-                st.markdown(f"**Genres:** {', '.join(entry['genres'])}")
-                st.markdown(f"[▶️ Listen on Spotify]({track['external_urls']['spotify']})")
-                st.markdown("---")
-                track_uris.append(track['uri'])
+        if export_option == "Use Existing Playlist" and playlist_names:
+            selected_playlist = st.selectbox("Select a playlist:", playlist_names)
+            if st.button("➕ Add All to Playlist"):
+                try:
+                    sp.playlist_add_items(playlist_id=playlist_map[selected_playlist], items=track_uris)
+                    st.success(f"✅ Added {len(track_uris)} songs to '{selected_playlist}'")
+                except Exception as e:
+                    st.error("❌ Could not add to playlist.")
+                    st.exception(e)
 
-            st.subheader("📤 Export to Playlist")
-            user_playlists = sp.current_user_playlists(limit=50)['items']
-            playlist_names = [p['name'] for p in user_playlists]
-            playlist_map = {p['name']: p['id'] for p in user_playlists}
-
-            export_option = st.radio("Choose an export option:", ["Use Existing Playlist", "Create New Playlist"])
-
-            if export_option == "Use Existing Playlist" and playlist_names:
-                selected_playlist = st.selectbox("Select a playlist:", playlist_names)
-                if st.button("➕ Add All to Playlist"):
-                    try:
-                        sp.playlist_add_items(playlist_id=playlist_map[selected_playlist], items=track_uris)
-                        st.success(f"✅ Added {len(track_uris)} songs to '{selected_playlist}'")
-                    except Exception as e:
-                        st.error("❌ Could not add to playlist.")
-                        st.exception(e)
-
-            elif export_option == "Create New Playlist":
-                new_name = st.text_input("Name for new playlist:")
-                if st.button("💼 Create Playlist and Add Tracks") and new_name:
-                    try:
-                        new_playlist = sp.user_playlist_create(user=user['id'], name=new_name, public=True)
-                        sp.playlist_add_items(new_playlist['id'], track_uris)
-                        st.success(f"✅ Created playlist '{new_name}' and added {len(track_uris)} tracks.")
-                    except Exception as e:
-                        st.error("❌ Failed to create or update playlist.")
-                        st.exception(e)
-
-    except Exception as e:
-        st.error("Something went wrong while fetching your Spotify data.")
-        st.exception(e)
+        elif export_option == "Create New Playlist":
+            new_name = st.text_input("Name for new playlist:")
+            if st.button("💼 Create Playlist and Add Tracks") and new_name:
+                try:
+                    new_playlist = sp.user_playlist_create(user=user['id'], name=new_name, public=True)
+                    sp.playlist_add_items(new_playlist['id'], track_uris)
+                    st.success(f"✅ Created playlist '{new_name}' and added {len(track_uris)} tracks.")
+                except Exception as e:
+                    st.error("❌ Failed to create or update playlist.")
+                    st.exception(e)
 
 else:
     st.markdown('<div class="logo-text">MUPY</div>', unsafe_allow_html=True)
