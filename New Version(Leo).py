@@ -20,4 +20,104 @@ sp_oauth = SpotifyOAuth(
 # Streamlit page configuration
 st.set_page_config(page_title="MUPY", layout="centered", page_icon="🎧")
 
+#CSS styling (basic UIP design) 
+# --- CSS Styling ---
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap');
+
+    html, body, .stApp {
+        background: linear-gradient(to bottom, #000000, #0b0011);
+        color: #eeeeee;
+        font-family: 'Outfit', sans-serif;
+    }
+
+    .logo-text {
+        font-size: 4em;
+        font-weight: 700;
+        background: linear-gradient(90deg, #ff4ecb, #b388eb);
+        background-size: 200% auto;
+        color: transparent;
+        background-clip: text;
+        -webkit-background-clip: text;
+        transition: background-position 0.5s ease;
+        text-align: center;
+        margin-top: 60px;
+        margin-bottom: 20px;
+    }
+
+    .logo-text:hover {
+        background-position: right center;
+    }
+
+    .cta-text {
+        font-size: 1.5em;
+        text-align: center;
+        margin-bottom: 50px;
+        color: #cccccc;
+    }
+
+    .login-btn {
+        display: inline-block;
+        background-color: #1db954;
+        color: white !important;
+        padding: 0.9em 2.2em;
+        border-radius: 30px;
+        font-weight: 600;
+        font-size: 1.1em;
+        text-decoration: none;
+        transition: all 0.3s ease-in-out;
+        box-shadow: 0 0 10px #1db95466;
+    }
+
+    .login-btn:hover {
+        background-color: #1ed760;
+        transform: scale(1.05);
+        box-shadow: 0 0 14px #1ed760aa;
+    }
+
+    .center-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    @keyframes fadein {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .success-box {
+        background-color: #1a1f1b;
+        border-left: 5px solid #1db954;
+        padding: 1em;
+        margin-top: 60px;
+        margin-bottom: 60px;
+        border-radius: 10px;
+        font-weight: 500;
+        color: #d4fcdc;
+        text-align: center;
+        width: 80%;
+        margin-left: auto;
+        margin-right: auto;
+        animation: fadein 1s ease-in-out;
+    }
+
+    .profile-pic {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        border: 2px solid #b388eb;
+        object-fit: cover;
+        z-index: 999;
+        box-shadow: 0 0 10px #b388eb88;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+
 
