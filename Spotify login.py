@@ -2,9 +2,9 @@ import streamlit as st
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
-CLIENT_ID = "YOUR_CLIENT_ID"
-CLIENT_SECRET = "YOUR_CLIENT_SECRET"
-REDIRECT_URI = "https://your-deployed-app.streamlit.app/callback"
+CLIENT_ID = "dcfd782b75b4472c9712492560b7a142"
+CLIENT_SECRET = "01a88c106a204ca1a4f819e0f73d0ffa"
+REDIRECT_URI = "https://spotify20app-bbgh7fg7susxwuu26hpwis.streamlit.app/"
 SCOPE = "user-library-read playlist-modify-private"
 
 def main():
