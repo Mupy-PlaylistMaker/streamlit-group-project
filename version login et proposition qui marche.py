@@ -7,9 +7,8 @@ import random
 CLIENT_ID = "dcfd782b75b4472c9712492560b7a142"
 CLIENT_SECRET = "01a88c106a204ca1a4f819e0f73d0ffa"
 REDIRECT_URI = "http://localhost:8501"
-SCOPE = "user-read-private user-read-email user-top-read"
+SCOPE = "user-read-private user-read-email user-top-read playlist-modify-public playlist-modify-private"
 
-# --- Initialize Spotify Auth ---
 sp_oauth = SpotifyOAuth(
     client_id=CLIENT_ID,
     client_secret=CLIENT_SECRET,
@@ -21,7 +20,10 @@ sp_oauth = SpotifyOAuth(
 # --- Page Setup ---
 st.set_page_config(page_title="MUPY", layout="centered", page_icon="🎧")
 
-# --- Custom Styling ---
+# --- Auth URL ---
+auth_url = sp_oauth.get_authorize_url()
+
+# --- CSS Styling ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap');
@@ -113,10 +115,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- Auth URL ---
-auth_url = sp_oauth.get_authorize_url()
-
-# --- Handle Redirect and Token Storage ---
+# --- Handle Redirect ---
 if "code" in st.query_params:
     code = st.query_params["code"]
     try:
@@ -128,36 +127,33 @@ if "code" in st.query_params:
         st.error("Login failed.")
         st.exception(e)
 
-# --- Logged In State ---
+# --- If Logged In ---
 if "token_info" in st.session_state:
     try:
-        # Setup Spotify client
         sp = spotipy.Spotify(auth=st.session_state['token_info']['access_token'])
         user = sp.current_user()
 
-        # --- Profile Picture ---
+        # --- Profile Image ---
         if user.get("images"):
             st.markdown(
                 f"<img class='profile-pic' src='{user['images'][0]['url']}' />",
                 unsafe_allow_html=True
             )
 
-        # --- Welcome UI ---
         st.markdown('<div class="logo-text">MUPY</div>', unsafe_allow_html=True)
         st.markdown('<div class="cta-text">Welcome to your Spotify-powered experience!</div>', unsafe_allow_html=True)
         st.markdown("<div class='success-box'>✅ Logged in successfully!</div>", unsafe_allow_html=True)
 
-        # --- Basic Info ---
         st.markdown("---")
         st.subheader("👤 Your Profile")
         st.markdown(f"**Name:** {user.get('display_name')}")
         st.markdown(f"**Email:** {user.get('email')}")
         st.markdown(f"**Country:** {user.get('country')}")
 
-        # --- Top Tracks Feature ---
         st.markdown("---")
         st.subheader("🎶 Your Top Tracks")
 
+        # Select time range
         time_range = st.selectbox(
             "Choose time range",
             options=["short_term", "medium_term", "long_term"],
@@ -168,21 +164,38 @@ if "token_info" in st.session_state:
             }[x]
         )
 
-        try:
-            top_tracks = sp.current_user_top_tracks(limit=10, time_range=time_range)
-            if not top_tracks['items']:
-                st.info("You don't have any top tracks yet. Try listening to more music!")
-            else:
-                for track in top_tracks['items']:
-                    st.markdown(f"**{track['name']}** by {', '.join([artist['name'] for artist in track['artists']])}")
-                    st.markdown(f"[▶️ Listen on Spotify]({track['external_urls']['spotify']})")
-                    st.markdown("---")
-        except Exception as e:
-            st.error("⚠️ Failed to fetch top tracks.")
-            st.exception(e)
+        # Get user's playlists for export option
+        playlists = sp.current_user_playlists(limit=50)['items']
+        playlist_names = [p['name'] for p in playlists]
+        playlist_map = {p['name']: p['id'] for p in playlists}
+        selected_playlist_name = st.selectbox("Choose a playlist to add songs:", playlist_names) if playlist_names else None
+
+        top_tracks = sp.current_user_top_tracks(limit=10, time_range=time_range)
+        track_uris = []
+
+        for track in top_tracks['items']:
+            st.image(track['album']['images'][0]['url'], width=150)
+            st.markdown(f"**{track['name']}** by {', '.join([artist['name'] for artist in track['artists']])}")
+            st.markdown(f"[▶️ Listen on Spotify]({track['external_urls']['spotify']})")
+
+            if track['preview_url']:
+                st.audio(track['preview_url'], format="audio/mp3")
+
+            track_uris.append(track['uri'])
+            st.markdown("---")
+
+        # Add to Playlist Button
+        if track_uris and selected_playlist_name:
+            if st.button("➕ Add All to Playlist"):
+                try:
+                    sp.playlist_add_items(playlist_id=playlist_map[selected_playlist_name], items=track_uris)
+                    st.success(f"✅ Added tracks to playlist: {selected_playlist_name}")
+                except Exception as e:
+                    st.error("❌ Failed to add tracks to playlist.")
+                    st.exception(e)
 
     except Exception as e:
-        st.error("❌ Failed to fetch user profile.")
+        st.error("❌ Failed to fetch profile or top tracks.")
         st.exception(e)
 
 # --- If Not Logged In ---
@@ -190,3 +203,9 @@ else:
     st.markdown('<div class="logo-text">MUPY</div>', unsafe_allow_html=True)
     st.markdown('<div class="cta-text">Login with Spotify to start your journey</div>', unsafe_allow_html=True)
     st.markdown(f'<div class="center-box"><a class="login-btn" href="{auth_url}">Log in with Spotify</a></div>', unsafe_allow_html=True)
+
+
+
+
+
+
