@@ -3,8 +3,8 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
 # --- Spotify Credentials ---
-CLIENT_ID = "dcfd782b75b4472c9712492560b7a142"
-CLIENT_SECRET = "01a88c106a204ca1a4f819e0f73d0ffa"
+CLIENT_ID = "61465f148fcb406b856636263e273525"
+CLIENT_SECRET = "d96d3207f4da4bc1a7f302685f6f8099"
 REDIRECT_URI = "https://spotify20appleopy-wr6jzbaagwn9sxdzmtmjwl.streamlit.app/"
 SCOPE = "user-read-private user-read-email"
 
