@@ -17,5 +17,7 @@ sp_oauth = SpotifyOAuth(
     scope=SCOPE
 )
 
+# Streamlit page configuration
+st.set_page_config(page_title="MUPY", layout="centered", page_icon="🎧")
 
 
