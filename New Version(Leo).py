@@ -119,5 +119,57 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+#get spotify auth url
+auth_url = sp_oauth.get_authorize_url()
+
+#Debug auth url
+st.write("Spotify Auth URL:", auth_url)
+
+#Query parameters (URL callback)
+query_params = st.query_params
+
+#Debug Query params
+st.write("Query Parameters:", query_params)
+
+# --- Handle redirect after Spotify login -> determines if the login requests received successfully the access code
+if "code" in query_params:
+    try:
+        code = query_params["code"][0]
+        token_info = sp_oauth.get_access_token(code)
+        if token_info:
+            st.session_state['token_info'] = token_info
+            st.rerun()
+        else:
+            st.error("Spotify token retrieval failed.")
+    except Exception as e:
+        st.error("Login failed.")
+        st.exception(e)
+
+# --- UI BEFORE login -> UI design in the first page (Arrival)
+if "token_info" not in st.session_state:
+    st.markdown('<div class="logo-text">MUPY</div>', unsafe_allow_html=True)
+    st.markdown('<div class="cta-text">Login with Spotify to start your journey</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="center-box"><a class="login-btn" href="{auth_url}">Log in with Spotify</a></div>', unsafe_allow_html=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
