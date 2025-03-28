@@ -1,8 +1,8 @@
 import streamlit as st
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+import random
 import requests
-import urllib.parse
 
 CLIENT_ID = "dcfd782b75b4472c9712492560b7a142"
 CLIENT_SECRET = "01a88c106a204ca1a4f819e0f73d0ffa"
@@ -120,19 +120,16 @@ def get_artist_genres(sp, artist_id):
     except Exception:
         return []
 
-# Deezer API fallback
-def get_deezer_preview(title, artist):
+# Preview helper from Deezer API
+def get_deezer_preview(track_name, artist_name):
     try:
-        query = urllib.parse.quote(f"{title} {artist}")
-        url = f"https://api.deezer.com/search?q={query}"
-        res = requests.get(url)
-        if res.status_code == 200:
-            data = res.json()
-            if data['data']:
-                return data['data'][0].get('preview')
+        query = f"{track_name} {artist_name}"
+        response = requests.get(f"https://api.deezer.com/search?q={query}")
+        data = response.json()
+        if data['data']:
+            return data['data'][0]['preview']
     except:
         return None
-    return None
 
 # --- Main App ---
 if "token_info" in st.session_state:
@@ -166,11 +163,12 @@ if "token_info" in st.session_state:
         genre = st.text_input("Genre to search for:", value="pop")
         year = st.slider("Released after year:", 2000, 2025, 2015)
         limit = st.slider("Number of tracks to retrieve:", 5, 50, 20)
+        offset = random.randint(0, 1000)
         query = f'genre:"{genre}" year:{year}-2025'
 
-        if st.button("Search Tracks"):
+        if st.button("🔀 Shuffle / Search Tracks"):
             try:
-                results = sp.search(q=query, type="track", limit=limit)
+                results = sp.search(q=query, type="track", limit=limit, offset=offset)
                 raw_tracks = results["tracks"]["items"]
                 st.session_state["explore_results"] = raw_tracks
             except Exception as e:
@@ -180,7 +178,6 @@ if "token_info" in st.session_state:
     if mode == "🌐 Explore Spotify" and "explore_results" in st.session_state:
         raw_tracks = st.session_state["explore_results"]
 
-    # Process Tracks
     track_uris = []
     if raw_tracks:
         st.subheader("🎧 Filtered Tracks")
@@ -199,15 +196,15 @@ if "token_info" in st.session_state:
             artist_id = track['artists'][0]['id']
             genres = get_artist_genres(sp, artist_id)
 
-            preview = track.get('preview_url') or get_deezer_preview(track['name'], track['artists'][0]['name'])
-            if show_previews_only and not preview:
+            preview_url = track['preview_url'] or get_deezer_preview(track['name'], track['artists'][0]['name'])
+            if show_previews_only and not preview_url:
                 continue
 
             st.markdown(f"### {track['name']} by {', '.join(a['name'] for a in track['artists'])}")
             if track['album']['images']:
                 st.image(track['album']['images'][0]['url'], width=150)
-            if preview:
-                st.audio(preview)
+            if preview_url:
+                st.audio(preview_url)
             else:
                 st.caption("⚠️ No preview available.")
             st.markdown(f"**Genres:** {', '.join(genres) if genres else 'Unknown'}")
@@ -215,7 +212,6 @@ if "token_info" in st.session_state:
             st.markdown("---")
             track_uris.append(track['uri'])
 
-    # Playlist Export
     if track_uris:
         st.subheader("📤 Export to Playlist")
         user_playlists = sp.current_user_playlists(limit=50)['items']
