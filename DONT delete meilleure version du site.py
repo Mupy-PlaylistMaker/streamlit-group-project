@@ -2,6 +2,7 @@ import streamlit as st
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import requests
+import urllib.parse
 
 CLIENT_ID = "dcfd782b75b4472c9712492560b7a142"
 CLIENT_SECRET = "01a88c106a204ca1a4f819e0f73d0ffa"
@@ -99,20 +100,6 @@ html, body, .stApp {
 </style>
 """, unsafe_allow_html=True)
 
-# Deezer fallback function
-def get_deezer_preview(track_name, artist_name):
-    try:
-        query = f"{track_name} {artist_name}"
-        url = f"https://api.deezer.com/search?q={query}"
-        response = requests.get(url)
-        data = response.json()
-
-        if data["data"]:
-            return data["data"][0].get("preview", None)
-    except Exception as e:
-        print(f"Deezer API error for '{track_name}':", e)
-    return None
-
 # Auth Redirect
 auth_url = sp_oauth.get_authorize_url()
 if "code" in st.query_params:
@@ -132,6 +119,20 @@ def get_artist_genres(sp, artist_id):
         return sp.artist(artist_id)['genres']
     except Exception:
         return []
+
+# Deezer API fallback
+def get_deezer_preview(title, artist):
+    try:
+        query = urllib.parse.quote(f"{title} {artist}")
+        url = f"https://api.deezer.com/search?q={query}"
+        res = requests.get(url)
+        if res.status_code == 200:
+            data = res.json()
+            if data['data']:
+                return data['data'][0].get('preview')
+    except:
+        return None
+    return None
 
 # --- Main App ---
 if "token_info" in st.session_state:
@@ -179,6 +180,7 @@ if "token_info" in st.session_state:
     if mode == "🌐 Explore Spotify" and "explore_results" in st.session_state:
         raw_tracks = st.session_state["explore_results"]
 
+    # Process Tracks
     track_uris = []
     if raw_tracks:
         st.subheader("🎧 Filtered Tracks")
@@ -193,28 +195,27 @@ if "token_info" in st.session_state:
                 continue
             elif popularity_filter == "😐 Low Popularity (0–40)" and pop > 40:
                 continue
-            if show_previews_only and not track['preview_url']:
-                continue
 
             artist_id = track['artists'][0]['id']
             genres = get_artist_genres(sp, artist_id)
 
+            preview = track.get('preview_url') or get_deezer_preview(track['name'], track['artists'][0]['name'])
+            if show_previews_only and not preview:
+                continue
+
             st.markdown(f"### {track['name']} by {', '.join(a['name'] for a in track['artists'])}")
             if track['album']['images']:
                 st.image(track['album']['images'][0]['url'], width=150)
-
-            preview_url = track['preview_url'] or get_deezer_preview(track['name'], track['artists'][0]['name'])
-
-            if preview_url:
-                st.audio(preview_url)
+            if preview:
+                st.audio(preview)
             else:
                 st.caption("⚠️ No preview available.")
-
             st.markdown(f"**Genres:** {', '.join(genres) if genres else 'Unknown'}")
             st.markdown(f"[▶️ Listen on Spotify]({track['external_urls']['spotify']})")
             st.markdown("---")
             track_uris.append(track['uri'])
 
+    # Playlist Export
     if track_uris:
         st.subheader("📤 Export to Playlist")
         user_playlists = sp.current_user_playlists(limit=50)['items']
