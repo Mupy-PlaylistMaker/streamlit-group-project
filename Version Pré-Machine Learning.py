@@ -17,7 +17,7 @@ sp_oauth = SpotifyOAuth(
     cache_path=".cache"
 )
 
-st.set_page_config(page_title="MUPY", layout="centered", page_icon="🎷")
+st.set_page_config(page_title="MUPY", layout="wide", page_icon="🎷")
 
 # --- CSS Styling ---
 st.markdown("""
@@ -64,43 +64,54 @@ html, body, .stApp {
     transform: scale(1.05);
     box-shadow: 0 0 14px #1ed760aa;
 }
-.center-box {
+.track-card {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    margin-top: 100px;
+    margin-bottom: 1.2rem;
+    padding: 1rem;
+    background-color: #111;
+    border-radius: 12px;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
 }
-.success-box {
-    background-color: #1a1f1b;
-    border-left: 5px solid #1db954;
-    padding: 1em;
-    margin-top: 60px;
-    margin-bottom: 60px;
-    border-radius: 10px;
-    font-weight: 500;
-    color: #d4fcdc;
-    text-align: center;
-    width: 80%;
-    margin-left: auto;
-    margin-right: auto;
-}
-.profile-pic {
-    position: fixed;
-    top: 20px;
-    left: 50px;
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    border: 2px solid #b388eb;
+.track-card img {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
     object-fit: cover;
-    z-index: 999;
-    box-shadow: 0 0 10px #b388eb88;
+    margin-right: 16px;
+}
+.track-info {
+    flex: 1;
+}
+.track-title {
+    font-size: 1.1em;
+    font-weight: bold;
+}
+.track-meta {
+    font-size: 0.9em;
+    color: #bbb;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Auth Redirect
+# --- Helpers ---
+def get_artist_genres(sp, artist_id):
+    try:
+        return sp.artist(artist_id)['genres']
+    except Exception:
+        return []
+
+def get_deezer_preview(track_name, artist_name):
+    try:
+        query = f"{track_name} {artist_name}"
+        response = requests.get(f"https://api.deezer.com/search?q={query}")
+        data = response.json()
+        if data['data']:
+            return data['data'][0]['preview']
+    except:
+        return None
+
+# --- Auth Redirect ---
 auth_url = sp_oauth.get_authorize_url()
 if "code" in st.query_params:
     code = st.query_params["code"]
@@ -113,24 +124,6 @@ if "code" in st.query_params:
         st.error("Login failed.")
         st.exception(e)
 
-# Genre helper
-def get_artist_genres(sp, artist_id):
-    try:
-        return sp.artist(artist_id)['genres']
-    except Exception:
-        return []
-
-# Preview helper from Deezer API
-def get_deezer_preview(track_name, artist_name):
-    try:
-        query = f"{track_name} {artist_name}"
-        response = requests.get(f"https://api.deezer.com/search?q={query}")
-        data = response.json()
-        if data['data']:
-            return data['data'][0]['preview']
-    except:
-        return None
-
 # --- Main App ---
 if "token_info" in st.session_state:
     sp = spotipy.Spotify(auth=st.session_state["token_info"]["access_token"])
@@ -140,11 +133,15 @@ if "token_info" in st.session_state:
     st.markdown(f"✅ Logged in as **{user['display_name']}**")
 
     if user.get("images"):
-        st.image(user['images'][0]['url'], width=80)
+        st.image(user['images'][0]['url'], width=60)
 
     mode = st.radio("Choose Mode:", ["🎵 Top Tracks", "🌐 Explore Spotify"])
     popularity_filter = st.selectbox("🎯 Filter by Popularity", [
-        "All", "🔥 Very Popular (81–100)", "👍 Popular (61–80)", "🙂 Moderate (41–60)", "😐 Low Popularity (0–40)"
+        "All",
+        "🔥 Very Popular (81–100)",
+        "👍 Popular (61–80)",
+        "🙂 Moderate (41–60)",
+        "😐 Low Popularity (0–40)",
     ])
     show_previews_only = st.toggle("Show only tracks with preview", value=False)
 
@@ -195,22 +192,25 @@ if "token_info" in st.session_state:
 
             artist_id = track['artists'][0]['id']
             genres = get_artist_genres(sp, artist_id)
-
             preview_url = track['preview_url'] or get_deezer_preview(track['name'], track['artists'][0]['name'])
             if show_previews_only and not preview_url:
                 continue
 
-            st.markdown(f"### {track['name']} by {', '.join(a['name'] for a in track['artists'])}")
-            if track['album']['images']:
-                st.image(track['album']['images'][0]['url'], width=150)
-            if preview_url:
-                st.audio(preview_url)
-            else:
-                st.caption("⚠️ No preview available.")
-            st.markdown(f"**Genres:** {', '.join(genres) if genres else 'Unknown'}")
-            st.markdown(f"[▶️ Listen on Spotify]({track['external_urls']['spotify']})")
-            st.markdown("---")
-            track_uris.append(track['uri'])
+            with st.container():
+                st.markdown(f"""
+                <div class="track-card">
+                    <img src="{track['album']['images'][0]['url'] if track['album']['images'] else ''}" />
+                    <div class="track-info">
+                        <div class="track-title">{track['name']} — {', '.join(a['name'] for a in track['artists'])}</div>
+                        <div class="track-meta">Genres: {', '.join(genres) if genres else 'Unknown'} · Popularity: {pop}</div>
+                        <div><a href="{track['external_urls']['spotify']}" target="_blank">▶️ Listen on Spotify</a></div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                if preview_url:
+                    st.audio(preview_url)
+                st.markdown("---")
+                track_uris.append(track['uri'])
 
     if track_uris:
         st.subheader("📤 Export to Playlist")
