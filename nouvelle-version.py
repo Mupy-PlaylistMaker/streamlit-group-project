@@ -5,13 +5,14 @@ import random
 import requests
 import pandas as pd
 import numpy as np
+import time
 from sklearn.metrics.pairwise import euclidean_distances
 
 # --- Configuration ---
 CLIENT_ID = "dcfd782b75b4472c9712492560b7a142"
 CLIENT_SECRET = "01a88c106a204ca1a4f819e0f73d0ffa"
 REDIRECT_URI = "http://localhost:8501"
-SCOPE = "user-read-private user-read-email"
+SCOPE = "user-read-private user-read-email playlist-modify-public playlist-modify-private"
 
 sp_oauth = SpotifyOAuth(
     client_id=CLIENT_ID,
@@ -134,18 +135,17 @@ html, body, .stApp {
 # --- Helpers ---
 def get_album_image_url(sp, track_name, artist_name):
     try:
-        # Search for the track using name and artist
         results = sp.search(q=f"track:{track_name} artist:{artist_name}", type="track", limit=1)
         if results['tracks']['items']:
             track = results['tracks']['items'][0]
-            album_image_url = track['album']['images'][0]['url']  # Get the album image URL
+            album_image_url = track['album']['images'][0]['url']
             return album_image_url
         else:
             return None
     except Exception as e:
         st.error("Error fetching album image.")
-        st.exception(e)
         return None
+
 
 def get_deezer_preview(track_name, artist_name):
     try:
@@ -157,8 +157,8 @@ def get_deezer_preview(track_name, artist_name):
         return None
     except Exception as e:
         st.error("Error fetching Deezer preview.")
-        st.exception(e)
         return None
+
 
 # --- Auth ---
 auth_url = sp_oauth.get_authorize_url()
@@ -173,6 +173,7 @@ if "code" in st.query_params:
         st.error("Login failed.")
         st.exception(e)
 
+
 # --- Load Dataset ---
 @st.cache_data
 def load_dataset():
@@ -186,12 +187,21 @@ if "token_info" in st.session_state:
     sp = spotipy.Spotify(auth=st.session_state["token_info"]["access_token"])
 
     # --- Filter Helper Function ---
-    def filter_df(df, dance_range, valence_range, tempo_range):
-        return df[
+    def filter_df(df, dance_range, valence_range, tempo_range, num_songs):
+        # Apply filters
+        filtered_df = df[
             df["danceability"].between(*dance_range) &
             df["valence"].between(*valence_range) &
             df["tempo"].between(*tempo_range)
             ]
+
+        # Randomize the order of the songs
+        if not filtered_df.empty:
+            random_state = int(time.time())  # Use time-based random state for more variability
+            randomized_df = filtered_df.sample(n=num_songs, random_state=random_state)
+            return randomized_df
+        else:
+            return filtered_df
 
     # --- Choose Number of Songs to Work With ---
     st.sidebar.header("🎚️ Playlist Settings")
@@ -199,24 +209,55 @@ if "token_info" in st.session_state:
 
     # --- Filter Settings ---
     st.sidebar.header("🎛️ Filter Songs by Audio Features")
-    dance_range = st.sidebar.slider("💃 Danceability", 0.0, 1.0, (0.2, 0.8), step=0.2)
-    valence_range = st.sidebar.slider("😊 Valence (Mood)", 0.0, 1.0, (0.2, 0.8), step=0.2)
-    tempo_min = int(df["tempo"].min())
-    tempo_max = int(df["tempo"].max())
-    tempo_range = st.sidebar.slider("🎵 Tempo (BPM)", tempo_min, tempo_max, (tempo_min, tempo_max), step=5)
 
-    # --- Apply filters just once ---
-    filtered_df = filter_df(df, dance_range, valence_range, tempo_range)
+    # Divide danceability into 3 categories
+    danceability_category = st.sidebar.radio(
+        "💃 Danceability",
+        ['Low', 'Medium', 'High']
+    )
+
+    if danceability_category == 'Low':
+        dance_range = (0.0, 0.3)
+    elif danceability_category == 'Medium':
+        dance_range = (0.3, 0.7)
+    elif danceability_category == 'High':
+        dance_range = (0.7, 1.0)
+
+    # Divide valence (mood) into 3 categories
+    valence_category = st.sidebar.radio(
+        "😊 Valence (Mood)",
+        ['Low', 'Medium', 'High']
+    )
+
+    if valence_category == 'Low':
+        valence_range = (0.0, 0.3)
+    elif valence_category == 'Medium':
+        valence_range = (0.3, 0.7)
+    elif valence_category == 'High':
+        valence_range = (0.7, 1.0)
+
+    # Tempo Category Selection (Slow, Mid, Fast)
+    bpm_category = st.sidebar.radio("🎵 Select Tempo Category", ["Slow", "Mid", "Fast"])
+    if bpm_category == "Slow":
+        tempo_range = (0, 90)
+    elif bpm_category == "Mid":
+        tempo_range = (90, 130)
+    elif bpm_category == "Fast":
+        tempo_range = (130, 249)
+
+    # --- Apply filters and randomize ---
+    filtered_df = filter_df(df, dance_range, valence_range, tempo_range, num_songs)
 
     # --- Initialize or load working_df in session ---
     if "working_df" not in st.session_state:
-        st.session_state["working_df"] = df.head(0).copy()
+        st.session_state["working_df"] = pd.DataFrame()  # Initialize the key with an empty DataFrame
 
     # --- Refresh Button ---
     if st.sidebar.button("🔄 Refresh Songs"):
-        if not filtered_df.empty:
-            st.session_state["working_df"] = filtered_df.head(num_songs)
-            st.success(f"✅ Found {len(filtered_df)} songs matching your filters.")
+        randomized_songs = filter_df(df, dance_range, valence_range, tempo_range, num_songs)
+        if not randomized_songs.empty:
+            st.session_state["working_df"] = randomized_songs
+            st.success(f"✅ Found and randomized {len(randomized_songs)} songs matching your filters.")
         else:
             st.warning("❌ No songs match the selected filters.")
             st.session_state["working_df"] = df.head(0).copy()
@@ -243,13 +284,13 @@ if "token_info" in st.session_state:
             album_image_url = get_album_image_url(sp, track['track_name'], track['artist_name'])
             preview_url = get_deezer_preview(track['track_name'], track['artist_name'])
             st.markdown(f"""
-            <div class="track-card">
-                <img src="{album_image_url}" />
-                <div class="track-info">
-                    <div class="track-title">{track['track_name']} — {track['artist_name']}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                   <div class="track-card">
+                       <img src="{album_image_url}" />
+                       <div class="track-info">
+                           <div class="track-title">{track['track_name']} — {track['artist_name']}</div>
+                       </div>
+                   </div>
+                   """, unsafe_allow_html=True)
 
             # Display the preview
             if preview_url:
