@@ -282,8 +282,12 @@ if "token_info" in st.session_state:
     working_df = st.session_state["working_df"]
 
     # --- Step 1: Separate liked and disliked tracks ---
-    liked_tracks = working_df[~working_df['track_id'].isin(st.session_state["to_change"])]
-    disliked_tracks = working_df[working_df['track_id'].isin(st.session_state["to_change"])]
+    if 'track_id' in working_df.columns:
+        liked_tracks = working_df[~working_df['track_id'].isin(st.session_state["to_change"])]
+        disliked_tracks = working_df[working_df['track_id'].isin(st.session_state["to_change"])]
+    else:
+        liked_tracks = pd.DataFrame()
+        disliked_tracks = pd.DataFrame()
 
     # --- Step 2: Compute mood vector from liked tracks ---
     feature_columns = ['danceability', 'energy', 'valence', 'acousticness', 'instrumentalness']
