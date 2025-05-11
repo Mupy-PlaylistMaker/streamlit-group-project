@@ -28,14 +28,16 @@ st.set_page_config(page_title="MUPY", layout="wide", page_icon="🎷")
 st.markdown("""
 <style>
 html, body, .stApp {
-    background: linear-gradient(to bottom, #000000, #0b0011);
+    background: radial-gradient(ellipse at center, #1a0025 0%, #000000 100%);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
     color: #eeeeee;
     font-family: 'Outfit', sans-serif;
 }
 .logo-text {
-    font-size: 4em;
+    font-size: 5em;
     font-weight: 700;
-    background: linear-gradient(90deg, #ff4ecb, #b388eb);
+    background: linear-gradient(90deg, #c18dfb, #d8b8ff);
     background-size: 200% auto;
     color: transparent;
     background-clip: text;
@@ -58,14 +60,14 @@ html, body, .stApp {
     border-radius: 30px;
     font-weight: 600;
     font-size: 1.1em;
-    text-decoration: none;
+    text-decoration: none !important;
     transition: all 0.3s ease-in-out;
-    box-shadow: 0 0 10px #1db95466;
+    box-shadow: 0 0 20x #1db95466;
 }
 .login-btn:hover {
     background-color: #1ed760;
     transform: scale(1.05);
-    box-shadow: 0 0 14px #1ed760aa;
+    box-shadow: 0 0 28px #1ed760aa;
 }
 .center-box {
     display: flex;
