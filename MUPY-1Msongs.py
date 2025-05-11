@@ -226,6 +226,12 @@ if "token_info" in st.session_state:
     # --- Filter Settings ---
     st.sidebar.header("🎛️ Filter Songs by Audio Features")
 
+    # Genre Dropdown Filter
+    genre_options = sorted(df["genre"].dropna().unique().tolist())
+    selected_genres = st.sidebar.multiselect("🎼 Select Genres", options=genre_options, default=genre_options)
+
+    df = df[df["genre"].isin(selected_genres)]
+
     # Divide danceability into 4 categories including "I don't care"
     danceability_category = st.sidebar.radio(
         "💃 Danceability",
@@ -296,10 +302,23 @@ if "token_info" in st.session_state:
         disliked_tracks = pd.DataFrame()
 
     # --- Step 2: Compute mood vector from liked tracks ---
+    # Remove "genre" from feature_columns for ML
     feature_columns = [
         'danceability', 'energy', 'valence', 'acousticness', 'instrumentalness',
         'speechiness', 'liveness', 'loudness', 'tempo'
     ]
+    # One-hot encode genre if it exists
+    if 'genre' in df.columns:
+        df = pd.get_dummies(df, columns=["genre"])
+    # Redefine feature_columns to include all feature columns used for ML, excluding any non-numeric or ID columns and "genre"
+    feature_columns = [col for col in df.columns if col not in ['liked', 'track_id', 'artist_name', 'track_name', 'album_image_url', 'preview_url'] and not col.startswith('genre')]
+    # Apply same logic to liked_tracks (ensure columns match after encoding)
+    if 'genre' in liked_tracks.columns:
+        liked_tracks = pd.get_dummies(liked_tracks, columns=["genre"])
+    # Make sure liked_tracks has all columns in feature_columns (fill missing with 0)
+    for col in feature_columns:
+        if col not in liked_tracks.columns:
+            liked_tracks[col] = 0
     if not liked_tracks.empty:
         mood_vector = liked_tracks[feature_columns].mean().values.reshape(1, -1)
     else:
@@ -309,29 +328,32 @@ if "token_info" in st.session_state:
     if st.button("🔁 Replace Disliked Songs") and mood_vector is not None and not disliked_tracks.empty:
         # Step 1: Filter the dataset using the same audio feature ranges
         candidate_pool = filter_df(df, dance_range, valence_range, tempo_range, num_songs * 3)
-
         # Step 2: Remove tracks already liked
         candidate_pool = candidate_pool[~candidate_pool['track_id'].isin(liked_tracks['track_id'])]
-
+        # One-hot encode genre if it exists
+        if 'genre' in candidate_pool.columns:
+            candidate_pool = pd.get_dummies(candidate_pool, columns=["genre"])
+        # Redefine feature_columns to include all feature columns used for ML, excluding any non-numeric or ID columns and "genre"
+        feature_columns = [col for col in candidate_pool.columns if col not in ['liked', 'track_id', 'artist_name', 'track_name', 'album_image_url', 'preview_url'] and not col.startswith('genre')]
+        # Make sure candidate_pool has all columns in feature_columns (fill missing with 0)
+        for col in feature_columns:
+            if col not in candidate_pool.columns:
+                candidate_pool[col] = 0
         # Step 3: Compute distance to mood vector
         candidate_features = candidate_pool[feature_columns].dropna()
         candidate_vectors = candidate_features.values
         distances = euclidean_distances(candidate_vectors, mood_vector).flatten()
-
         # Step 4: Add distances back to candidate pool
         candidate_pool = candidate_pool.loc[candidate_features.index].copy()
         candidate_pool['distance'] = distances
-
         # Step 5: Sort by closest and validate tracks with previews
         sorted_candidates = candidate_pool.sort_values(by='distance')
         replacements_df = get_valid_tracks(sp, sorted_candidates, len(disliked_tracks))
-
         # Step 6: Replace disliked tracks with new ones
         updated_df = pd.concat([
             liked_tracks,
             replacements_df
         ], ignore_index=True).sample(frac=1, random_state=42).reset_index(drop=True)
-
         st.session_state["working_df"] = updated_df
         st.session_state["to_change"] = set()
         st.success("🔁 Disliked tracks replaced with similar suggestions.")
@@ -378,19 +400,23 @@ if "token_info" in st.session_state:
         import matplotlib.pyplot as plt
         import numpy as np
 
+        # Remove "genre" from feature_columns for radar
         feature_columns = [
             'danceability', 'energy', 'valence', 'acousticness', 'instrumentalness',
             'speechiness', 'liveness', 'loudness', 'tempo'
         ]
+        # One-hot encode genre if it exists
+        if 'genre' in working_df.columns:
+            working_df = pd.get_dummies(working_df, columns=["genre"])
+        # Redefine feature_columns to include all feature columns used for ML, excluding any non-numeric or ID columns and "genre"
+        feature_columns = [col for col in working_df.columns if col not in ['liked', 'track_id', 'artist_name', 'track_name', 'album_image_url', 'preview_url'] and not col.startswith('genre')]
         if not working_df.empty:
             averages = working_df[feature_columns].mean().values
             labels = feature_columns
-
             angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
             values = averages.tolist()
             values += values[:1]
             angles += angles[:1]
-
             fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
             ax.fill(angles, values, color='#1db954', alpha=0.25)
             ax.plot(angles, values, color='#1db954', linewidth=2)
