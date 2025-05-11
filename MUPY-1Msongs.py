@@ -219,69 +219,54 @@ if "token_info" in st.session_state:
         else:
             return filtered_df
 
+    # --- Refresh Button (UI placeholder at top of sidebar) ---
+    refresh_clicked = st.sidebar.button("🔄 Refresh Songs")
+
     # --- Choose Number of Songs to Work With ---
     st.sidebar.header("🎚️ Playlist Settings")
     num_songs = st.sidebar.slider("How many songs to include?", 10, 50, 20)
+
+    if "working_df" not in st.session_state:
+        st.session_state["working_df"] = pd.DataFrame()
+    working_df = st.session_state["working_df"]
 
     # --- Filter Settings ---
     st.sidebar.header("🎛️ Filter Songs by Audio Features")
 
     # Genre Dropdown Filter
     genre_options = sorted(df["genre"].dropna().unique().tolist())
-    selected_genres = st.sidebar.multiselect("🎼 Select Genres", options=genre_options, default=genre_options)
+    selected_genres = st.sidebar.multiselect("🎼 Select Genres", options=genre_options, default=[])
 
     df = df[df["genre"].isin(selected_genres)]
 
-    # Divide danceability into 4 categories including "I don't care"
-    danceability_category = st.sidebar.radio(
-        "💃 Danceability",
-        ['Low', 'Medium', 'High', "I don't care"]
-    )
+    # Popularity filter
+    popularity_range = st.sidebar.slider("📈 Popularity", 0, 100, (0, 100))
 
-    if danceability_category == 'Low':
-        dance_range = (0.0, 0.3)
-    elif danceability_category == 'Medium':
-        dance_range = (0.3, 0.7)
-    elif danceability_category == 'High':
-        dance_range = (0.7, 1.0)
+    # Acousticness filter
+    acousticness_range = st.sidebar.slider("🎻 Acousticness", 0.0, 1.0, (0.0, 1.0), step=0.1)
+
+    # Danceability slider
+    dance_range = st.sidebar.slider("💃 Danceability", 0.0, 1.0, (0.0, 1.0), step=0.1)
+
+    # Valence (Mood) slider
+    valence_range = st.sidebar.slider("😊 Valence (Mood)", 0.0, 1.0, (0.0, 1.0), step=0.1)
+
+    # Tempo slider (BPM)
+    if df["tempo"].dropna().empty:
+        tempo_min, tempo_max = 0, 250  # fallback default range
     else:
-        dance_range = (0.0, 1.0)
+        tempo_min = int(df["tempo"].min())
+        tempo_max = int(df["tempo"].max())
+    tempo_range = st.sidebar.slider("🎵 Tempo (BPM)", tempo_min, tempo_max, (tempo_min, tempo_max), step=5)
 
-    # Divide valence (mood) into 4 categories including "I don't care"
-    valence_category = st.sidebar.radio(
-        "😊 Valence (Mood)",
-        ['Low', 'Medium', 'High', "I don't care"]
-    )
+    # Apply filters to df
+    df = df[
+        df["popularity"].between(*popularity_range) &
+        df["acousticness"].between(*acousticness_range)
+    ]
 
-    if valence_category == 'Low':
-        valence_range = (0.0, 0.3)
-    elif valence_category == 'Medium':
-        valence_range = (0.3, 0.7)
-    elif valence_category == 'High':
-        valence_range = (0.7, 1.0)
-    else:
-        valence_range = (0.0, 1.0)
-
-    # Tempo Category Selection (Slow, Mid, Fast, I don't care)
-    bpm_category = st.sidebar.radio("🎵 Select Tempo Category", ["Slow", "Mid", "Fast", "I don't care"])
-    if bpm_category == "Slow":
-        tempo_range = (0, 90)
-    elif bpm_category == "Mid":
-        tempo_range = (90, 130)
-    elif bpm_category == "Fast":
-        tempo_range = (130, 249)
-    else:
-        tempo_range = (0, 249)
-
-    # --- Apply filters and randomize ---
-    filtered_df = filter_df(df, dance_range, valence_range, tempo_range, num_songs)
-
-    # --- Initialize or load working_df in session ---
-    if "working_df" not in st.session_state:
-        st.session_state["working_df"] = pd.DataFrame()  # Initialize the key with an empty DataFrame
-
-    # --- Refresh Button ---
-    if st.sidebar.button("🔄 Refresh Songs"):
+    # --- Refresh Button Logic (triggered after all filter variables are defined) ---
+    if refresh_clicked:
         oversampled_df = filter_df(df, dance_range, valence_range, tempo_range, num_songs * 3)
         valid_songs_df = get_valid_tracks(sp, oversampled_df, num_songs)
         if not valid_songs_df.empty:
@@ -291,7 +276,13 @@ if "token_info" in st.session_state:
             st.warning("❌ Couldn't find enough songs with previews.")
             st.session_state["working_df"] = df.head(0).copy()
 
-    working_df = st.session_state["working_df"]
+    # --- Apply filters and randomize ---
+    filtered_df = filter_df(df, dance_range, valence_range, tempo_range, num_songs)
+
+    # --- Initialize or load working_df in session ---
+    if "working_df" not in st.session_state:
+        st.session_state["working_df"] = pd.DataFrame()  # Initialize the key with an empty DataFrame
+
 
     # --- Step 1: Separate liked and disliked tracks ---
     if 'track_id' in working_df.columns:
