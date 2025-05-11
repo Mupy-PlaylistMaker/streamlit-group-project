@@ -226,10 +226,10 @@ if "token_info" in st.session_state:
     # --- Filter Settings ---
     st.sidebar.header("🎛️ Filter Songs by Audio Features")
 
-    # Divide danceability into 3 categories
+    # Divide danceability into 4 categories including "I don't care"
     danceability_category = st.sidebar.radio(
         "💃 Danceability",
-        ['Low', 'Medium', 'High']
+        ['Low', 'Medium', 'High', "I don't care"]
     )
 
     if danceability_category == 'Low':
@@ -238,11 +238,13 @@ if "token_info" in st.session_state:
         dance_range = (0.3, 0.7)
     elif danceability_category == 'High':
         dance_range = (0.7, 1.0)
+    else:
+        dance_range = (0.0, 1.0)
 
-    # Divide valence (mood) into 3 categories
+    # Divide valence (mood) into 4 categories including "I don't care"
     valence_category = st.sidebar.radio(
         "😊 Valence (Mood)",
-        ['Low', 'Medium', 'High']
+        ['Low', 'Medium', 'High', "I don't care"]
     )
 
     if valence_category == 'Low':
@@ -251,15 +253,19 @@ if "token_info" in st.session_state:
         valence_range = (0.3, 0.7)
     elif valence_category == 'High':
         valence_range = (0.7, 1.0)
+    else:
+        valence_range = (0.0, 1.0)
 
-    # Tempo Category Selection (Slow, Mid, Fast)
-    bpm_category = st.sidebar.radio("🎵 Select Tempo Category", ["Slow", "Mid", "Fast"])
+    # Tempo Category Selection (Slow, Mid, Fast, I don't care)
+    bpm_category = st.sidebar.radio("🎵 Select Tempo Category", ["Slow", "Mid", "Fast", "I don't care"])
     if bpm_category == "Slow":
         tempo_range = (0, 90)
     elif bpm_category == "Mid":
         tempo_range = (90, 130)
     elif bpm_category == "Fast":
         tempo_range = (130, 249)
+    else:
+        tempo_range = (0, 249)
 
     # --- Apply filters and randomize ---
     filtered_df = filter_df(df, dance_range, valence_range, tempo_range, num_songs)
@@ -364,6 +370,29 @@ if "token_info" in st.session_state:
             # Display the preview
             if preview_url:
                 st.audio(preview_url, format="audio/mp3")
+
+        # --- Radar Chart of Audio Feature Averages ---
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        feature_columns = ['danceability', 'energy', 'valence', 'acousticness', 'instrumentalness', 'speechiness']
+        if not working_df.empty:
+            averages = working_df[feature_columns].mean().values
+            labels = feature_columns
+
+            angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
+            values = averages.tolist()
+            values += values[:1]
+            angles += angles[:1]
+
+            fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
+            ax.fill(angles, values, color='#1db954', alpha=0.25)
+            ax.plot(angles, values, color='#1db954', linewidth=2)
+            ax.set_yticklabels([])
+            ax.set_xticks(angles[:-1])
+            ax.set_xticklabels(labels)
+            ax.set_title("🎯 Average Audio Features of Playlist", y=1.08)
+            st.pyplot(fig)
 
         # --- Export to Spotify Playlist ---
         st.markdown("---")
