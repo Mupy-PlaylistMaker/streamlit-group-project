@@ -28,9 +28,7 @@ st.set_page_config(page_title="MUPY", layout="wide", page_icon="🎷")
 st.markdown("""
 <style>
 html, body, .stApp {
-    background: radial-gradient(ellipse at center, #1a0025 0%, #000000 100%);
-    background-repeat: no-repeat;
-    background-attachment: fixed;
+    background: linear-gradient(180deg, #000000, #1a001f, #2a0033, #3f0052);
     color: #eeeeee;
     font-family: 'Outfit', sans-serif;
 }
@@ -129,6 +127,11 @@ html, body, .stApp {
 .track-meta {
     font-size: 0.9em;
     color: #aaa;
+}
+button[kind="secondary"] {
+    background-color: #333333 !important;
+    color: white !important;
+    border: 1px solid #555555 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -318,7 +321,12 @@ if "token_info" in st.session_state:
         mood_vector = None  # Fallback if user marks everything for change
 
     # --- Step 3: Recommend replacements for disliked tracks ---
-    if st.button("🔁 Replace Disliked Songs") and mood_vector is not None and not disliked_tracks.empty:
+    # --- Button layout for Replace Disliked Songs ---
+    col1, col2 = st.columns([1, 2])
+    with col2:
+        st.markdown("Click once to load, then click again to replace.", unsafe_allow_html=True)
+        replace_clicked = st.button("🔁 Replace Disliked Songs", key="replace_button")
+    if replace_clicked and mood_vector is not None and not disliked_tracks.empty:
         # Step 1: Filter the dataset using the same audio feature ranges
         candidate_pool = filter_df(df, dance_range, valence_range, tempo_range, num_songs * 3)
         # Step 2: Remove tracks already liked
