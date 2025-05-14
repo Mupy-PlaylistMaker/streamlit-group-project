@@ -201,6 +201,18 @@ df = load_dataset()
 
 # --- Initialize Spotify Client if Logged In ---
 if "token_info" in st.session_state:
+    # --- Logout Button ---
+    with st.sidebar:
+        if st.button("🚪 Logout"):
+            for key in ["token_info", "working_df", "to_change", "playlist_ready"]:
+                if key in st.session_state:
+                    del st.session_state[key]
+            import os
+            if os.path.exists(".cache"):
+                os.remove(".cache")
+            st.rerun()
+    # --- Refresh Button (UI placeholder at top of sidebar) ---
+    refresh_clicked = st.sidebar.button("🔄 Refresh Songs")
     sp = spotipy.Spotify(auth=st.session_state["token_info"]["access_token"])
 
     # --- Initialize session state key for songs marked for replacement ---
@@ -224,8 +236,6 @@ if "token_info" in st.session_state:
         else:
             return filtered_df
 
-    # --- Refresh Button (UI placeholder at top of sidebar) ---
-    refresh_clicked = st.sidebar.button("🔄 Refresh Songs")
 
     # --- Choose Number of Songs to Work With ---
     st.sidebar.header("🎚️ Playlist Settings")
@@ -276,10 +286,12 @@ if "token_info" in st.session_state:
         valid_songs_df = get_valid_tracks(sp, oversampled_df, num_songs)
         if not valid_songs_df.empty:
             st.session_state["working_df"] = valid_songs_df
+            working_df = valid_songs_df
             st.success(f"✅ Found {len(valid_songs_df)} songs with previews.")
         else:
             st.warning("❌ Couldn't find enough songs with previews.")
             st.session_state["working_df"] = df.head(0).copy()
+            working_df = st.session_state["working_df"]
 
     # --- Apply filters and randomize ---
     filtered_df = filter_df(df, dance_range, valence_range, tempo_range, num_songs)
@@ -359,6 +371,7 @@ if "token_info" in st.session_state:
         st.session_state["to_change"] = set()
         st.success("🔁 Disliked tracks replaced with similar suggestions.")
 
+
     if not working_df.empty:
         st.subheader(f"🎶 Top {len(working_df)} Filtered Songs")
 
@@ -397,34 +410,45 @@ if "token_info" in st.session_state:
             if preview_url:
                 st.audio(preview_url, format="audio/mp3")
 
-        # --- Radar Chart of Audio Feature Averages ---
+        # --- Enhanced Pentagon Radar Chart for Playlist Profile ---
         import matplotlib.pyplot as plt
         import numpy as np
 
-        # Remove "genre" from feature_columns for radar
-        feature_columns = [
-            'danceability', 'energy', 'valence', 'acousticness', 'instrumentalness',
-            'speechiness', 'liveness', 'loudness', 'tempo'
-        ]
-        # One-hot encode genre if it exists
-        if 'genre' in working_df.columns:
-            working_df = pd.get_dummies(working_df, columns=["genre"])
-        # Redefine feature_columns to include all feature columns used for ML, excluding any non-numeric or ID columns and "genre"
-        feature_columns = [col for col in working_df.columns if col not in ['liked', 'track_id', 'artist_name', 'track_name', 'album_image_url', 'preview_url'] and not col.startswith('genre')]
-        if not working_df.empty:
-            averages = working_df[feature_columns].mean().values
-            labels = feature_columns
-            angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
-            values = averages.tolist()
+        radar_features = ['danceability', 'popularity', 'valence', 'acousticness', 'instrumentalness']
+
+        if all(f in working_df.columns for f in radar_features) and not working_df.empty:
+            avg_values = working_df[radar_features].mean()
+            if avg_values['popularity'] > 1:
+                avg_values['popularity'] /= 100
+
+            values = avg_values.tolist()
             values += values[:1]
+
+            angles = np.linspace(0, 2 * np.pi, len(radar_features), endpoint=False).tolist()
             angles += angles[:1]
-            fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
-            ax.fill(angles, values, color='#1db954', alpha=0.25)
-            ax.plot(angles, values, color='#1db954', linewidth=2)
-            ax.set_yticklabels([])
+
+            fig, ax = plt.subplots(figsize=(5, 5), subplot_kw=dict(polar=True))
+
+            # Improve color and theme consistency
+            ax.fill(angles, values, color='#b388eb', alpha=0.3)
+            ax.plot(angles, values, color='#ff4ecb', linewidth=2)
+
+            # Enhanced labels and theme matching
             ax.set_xticks(angles[:-1])
-            ax.set_xticklabels(labels)
-            ax.set_title("🎯 Average Audio Features of Playlist", y=1.08)
+            ax.set_xticklabels(radar_features, fontsize=12, color='white', fontweight='bold')
+            ax.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
+            ax.set_yticklabels(['0.2', '0.4', '0.6', '0.8', '1.0'], color='#cccccc', fontsize=8)
+            ax.set_ylim(0, 1)
+
+            ax.tick_params(colors='white')
+            ax.spines['polar'].set_color('white')
+            ax.grid(color='#444444', linestyle='dotted', linewidth=0.8)
+            fig.patch.set_facecolor('#0b0011')
+            ax.set_facecolor('#0b0011')
+
+            # Title styling
+            ax.set_title("🎯 Playlist Audio Profile", y=1.1, color='#eeeeee', fontsize=14, fontweight='bold')
+
             st.pyplot(fig)
 
         # --- Export to Spotify Playlist ---
