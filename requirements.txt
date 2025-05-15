@@ -4,3 +4,9 @@ datetime
 random
 requests
 deezer-python
+streamlit
+spotipy
+pandas
+numpy
+scikit-learn
+requests
