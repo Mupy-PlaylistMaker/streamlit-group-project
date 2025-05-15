@@ -1,14 +1,16 @@
-import streamlit as st
-import spotipy
-from spotipy.oauth2 import SpotifyOAuth
-import random
-import requests
-import pandas as pd
-import numpy as np
+import streamlit as st #importing streamlit, which will be our web interface for the app
+import spotipy #importing the python library spotipy, which gives us access to the Spotify API. Source commands: https://stackoverflow.com/questions/66370477/getting-started-with-spotipy
+from spotipy.oauth2 import SpotifyOAuth #enables OAuth handler to redirect to the official spotify login and get access tokens. Source: https://stackoverflow.com/questions/75827125/how-can-i-include-multiple-scopes-in-one-spotifyoauth-object
+import random 
+import requests #used to fetch the 30 seconds Deezer previews as the Spotify previews didn't work as wanted. Source: https://www.youtube.com/watch?v=6UxVC27n01M
+import pandas as pd #used for loading the csv file, filtering the songs, handling playlists and building the recommendation model. Source: https://www.youtube.com/watch?v=2uvysYbKdjM
+import numpy as np #
 import time
 from sklearn.metrics.pairwise import euclidean_distances
 
-# --- Configuration ---
+# Configuration 
+# Spotify OAuth Configuration 
+# Sets up the client credentials and scope required to authenticate the user via Spotify
 CLIENT_ID = "dcfd782b75b4472c9712492560b7a142"
 CLIENT_SECRET = "01a88c106a204ca1a4f819e0f73d0ffa"
 REDIRECT_URI = "http://localhost:8501"
@@ -22,9 +24,12 @@ sp_oauth = SpotifyOAuth(
     cache_path=".cache"
 )
 
+
+# Streamlit Page Setup
+# Sets page title, layout, and emoji icon for the browser tab
 st.set_page_config(page_title="MUPY", layout="wide", page_icon="🎷")
 
-# --- CSS Styling ---
+# Styling for dark theme, layout, and buttons
 st.markdown("""
 <style>
 html, body, .stApp {
@@ -137,7 +142,8 @@ button[kind="secondary"] {
 """, unsafe_allow_html=True)
 
 
-# --- Helpers ---
+# Helpers
+# Fetches the album image URL from Spotify for a given track and artist
 def get_album_image_url(sp, track_name, artist_name):
     try:
         results = sp.search(q=f"track:{track_name} artist:{artist_name}", type="track", limit=1)
@@ -149,7 +155,7 @@ def get_album_image_url(sp, track_name, artist_name):
         print(f"Error fetching album image for {track_name} by {artist_name}: {e}")
         return None
 
-
+# Searches the Deezer API to fetch a 30-second preview URL for the given track
 def get_deezer_preview(track_name, artist_name):
     try:
         query = f"{track_name} {artist_name}"
@@ -162,7 +168,7 @@ def get_deezer_preview(track_name, artist_name):
         st.error("Error fetching Deezer preview.")
         return None
 
-
+# Iterates through songs to collect only those that have both an album image and a preview
 def get_valid_tracks(sp, df, num_songs):
     valid_tracks = []
     for _, row in df.iterrows():
@@ -177,7 +183,10 @@ def get_valid_tracks(sp, df, num_songs):
     return pd.DataFrame(valid_tracks)
 
 
-# --- Auth ---
+ # Handles Spotify authentication and retrieves the access token from the redirected URL
+import os
+if os.path.exists(".cache"):
+    os.remove(".cache")
 auth_url = sp_oauth.get_authorize_url()
 if "code" in st.query_params:
     code = st.query_params["code"]
@@ -191,7 +200,7 @@ if "code" in st.query_params:
         st.exception(e)
 
 
-# --- Load Dataset ---
+# Loads the 1 million song dataset from CSV and caches it to speed up reloads
 @st.cache_data
 def load_dataset():
     return pd.read_csv("1MLNsongs.csv")
@@ -237,7 +246,7 @@ if "token_info" in st.session_state:
             return filtered_df
 
 
-    # --- Choose Number of Songs to Work With ---
+    # Sidebar controls: lets user select number of songs and filter by genre, popularity, acousticness, danceability, valence, and tempo
     st.sidebar.header("🎚️ Playlist Settings")
     num_songs = st.sidebar.slider("How many songs to include?", 10, 50, 20)
 
@@ -245,7 +254,7 @@ if "token_info" in st.session_state:
         st.session_state["working_df"] = pd.DataFrame()
     working_df = st.session_state["working_df"]
 
-    # --- Filter Settings ---
+# Generates a filtered and randomized playlist based on selected audio features and stores it in session state
     st.sidebar.header("🎛️ Filter Songs by Audio Features")
 
     # Genre Dropdown Filter
@@ -301,7 +310,7 @@ if "token_info" in st.session_state:
         st.session_state["working_df"] = pd.DataFrame()  # Initialize the key with an empty DataFrame
 
 
-    # --- Step 1: Separate liked and disliked tracks ---
+    # Separates current playlist into liked and disliked tracks based on user input
     if 'track_id' in working_df.columns:
         liked_tracks = working_df[~working_df['track_id'].isin(st.session_state["to_change"])]
         disliked_tracks = working_df[working_df['track_id'].isin(st.session_state["to_change"])]
@@ -309,7 +318,7 @@ if "token_info" in st.session_state:
         liked_tracks = pd.DataFrame()
         disliked_tracks = pd.DataFrame()
 
-    # --- Step 2: Compute mood vector from liked tracks ---
+    # Computes the average audio features (mood vector) from liked songs to guide ML recommendations
     # Remove "genre" from feature_columns for ML
     feature_columns = [
         'danceability', 'energy', 'valence', 'acousticness', 'instrumentalness',
@@ -332,8 +341,7 @@ if "token_info" in st.session_state:
     else:
         mood_vector = None  # Fallback if user marks everything for change
 
-    # --- Step 3: Recommend replacements for disliked tracks ---
-    # --- Button layout for Replace Disliked Songs ---
+    # Uses distance from mood vector to find and suggest similar songs as replacements for disliked ones
     col1, col2 = st.columns([1, 2])
     with col2:
         st.markdown("Click once to load, then click again to replace.", unsafe_allow_html=True)
@@ -387,7 +395,7 @@ if "token_info" in st.session_state:
             if album_image_url and preview_url:  # Only include tracks that have both album images and preview URL
                 valid_tracks.append(row)
 
-        # Display the valid tracks with album images and previews
+        # Displays each track in the playlist with album image, title, preview audio, and a checkbox to mark for replacement
         for track in valid_tracks:
             album_image_url = get_album_image_url(sp, track['track_name'], track['artist_name'])
             preview_url = get_deezer_preview(track['track_name'], track['artist_name'])
@@ -410,7 +418,8 @@ if "token_info" in st.session_state:
             if preview_url:
                 st.audio(preview_url, format="audio/mp3")
 
-        # --- Enhanced Pentagon Radar Chart for Playlist Profile ---
+        # Displays a radar chart showing average values for key audio features in the current playlist
+        # Enhanced Pentagon Radar Chart for Playlist Profile 
         import matplotlib.pyplot as plt
         import numpy as np
 
@@ -451,7 +460,7 @@ if "token_info" in st.session_state:
 
             st.pyplot(fig)
 
-        # --- Export to Spotify Playlist ---
+        # Allows users to export the playlist directly to their Spotify account
         st.markdown("---")
         st.subheader("📤 Export to Spotify")
 
